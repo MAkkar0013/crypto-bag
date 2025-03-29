@@ -10,28 +10,19 @@ import threading
 from collections import deque
 import logging
 from logging.handlers import RotatingFileHandler
-from dotenv import load_dotenv
+from flask import Flask, send_from_directory
 import os
-from dotenv import load_dotenv
-load_dotenv()
 
-app = Flask(__name__)
-app.config.update(
-    SECRET_KEY=os.getenv('SECRET_KEY'),
-    SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL'),
-    SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
-)
 
+
+app = Flask(__name__, static_folder='../frontend/build')
 CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://your-frontend-domain.com", "http://localhost:3000"]
-    }
+    r"/api/*": {"origins": ["https://your-frontend-url.onrender.com", "http://localhost:3000"]}
 })
 bcrypt = Bcrypt(app)
 
 # Конфигурация
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///prod.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///crypto_portfolio.db').replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -649,6 +640,25 @@ def toggle_admin_status(user_id):
             "status": 500,
             "message": f"Failed to update admin status: {str(e)}"
         }), 500
+    
+
+# API-роуты
+@app.route('/api/test')
+def test():
+    return {"status": "ok"}
+
+# Отдача React-приложения
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path.startswith('api/'):  # Пропускаем API-запросы
+        return "Not found", 404
+    
+    # Проверяем, существует ли файл в сборке React
+    if path != "" and os.path.exists(f"../frontend/build/{path}"):
+        return send_from_directory('../frontend/build', path)
+    else:
+        return send_from_directory('../frontend/build', 'index.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(debug=True)

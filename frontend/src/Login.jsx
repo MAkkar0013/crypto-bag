@@ -23,7 +23,6 @@ const Login = () => {
         localStorage.setItem("user_id", response.data.user_id);
         localStorage.setItem("is_admin", response.data.is_admin); // Это критически важно!
         navigate("/dashboard");
-        console.log(localStorage.getItem("is_admin"));
       }
     } catch (error) {
       setError(error.response?.data?.message || "Ошибка входа");
